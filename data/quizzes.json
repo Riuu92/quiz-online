@@ -1,0 +1,181 @@
+{
+  "quiz_tfsd6rk": {
+    "id": "quiz_tfsd6rk",
+    "title": "Kuis Trivia Nusantara",
+    "description": "Uji wawasan seputar Indonesia!",
+    "timePerQuestion": 20,
+    "questions": [
+      {
+        "id": 1,
+        "text": "Apa ibu kota Indonesia saat ini?",
+        "options": [
+          "Jakarta",
+          "Surabaya",
+          "Bandung",
+          "Medan"
+        ],
+        "correctAnswer": 0
+      },
+      {
+        "id": 2,
+        "text": "Pulau terbesar di Indonesia adalah?",
+        "options": [
+          "Jawa",
+          "Sumatera",
+          "Kalimantan",
+          "Bali"
+        ],
+        "correctAnswer": 2
+      }
+    ],
+    "creatorId": "user_pembuat_001",
+    "creatorName": "Andi Pembuat",
+    "createdAt": "2026-10-07T00:16:26.160Z",
+    "results": [
+      {
+        "id": "res_opzfnsq",
+        "userId": "user_teman_002",
+        "playerName": "Budi Teman",
+        "score": 1,
+        "total": 2,
+        "percentage": 50,
+        "timeSpent": 15,
+        "completedAt": "2026-10-07T00:16:26.198Z",
+        "breakdown": [
+          {
+            "questionIndex": 0,
+            "questionText": "Apa ibu kota Indonesia saat ini?",
+            "playerAnswer": "Jakarta",
+            "correctAnswer": "Jakarta",
+            "isCorrect": true
+          },
+          {
+            "questionIndex": 1,
+            "questionText": "Pulau terbesar di Indonesia adalah?",
+            "playerAnswer": "Jawa",
+            "correctAnswer": "Kalimantan",
+            "isCorrect": false
+          }
+        ]
+      }
+    ]
+  },
+  "quiz_g64w4u0": {
+    "id": "quiz_g64w4u0",
+    "title": "JavaScript",
+    "description": "",
+    "timePerQuestion": 20,
+    "questions": [
+      {
+        "id": 1,
+        "text": "Apa output dari console.log(2 + 3);?",
+        "options": [
+          "5",
+          "Error",
+          "23",
+          "6"
+        ],
+        "correctAnswer": 0
+      },
+      {
+        "id": 2,
+        "text": "Mana yang digunakan untuk membuat variable yang nilainya dapat diubah kembali?",
+        "options": [
+          "static",
+          "let",
+          "fixet",
+          "const"
+        ],
+        "correctAnswer": 1
+      },
+      {
+        "id": 3,
+        "text": "Array JavaScript dapat menyimpan lebih dari satu nilai",
+        "options": [
+          "Benar",
+          "Salah"
+        ],
+        "correctAnswer": 0
+      },
+      {
+        "id": 4,
+        "text": "Apa fungsi console.log() yang paling umum?",
+        "options": [
+          "Menghapus file",
+          "Membuat database",
+          "Mengubah warna halaman",
+          "Menampilkan nilai di console"
+        ],
+        "correctAnswer": 3
+      },
+      {
+        "id": 5,
+        "text": "Apa hasil dari let nama = \"Riuu\"; console.log(nama);?",
+        "options": [
+          "undefined",
+          "nama",
+          "Error",
+          "Riuu"
+        ],
+        "correctAnswer": 3
+      },
+      {
+        "id": 6,
+        "text": "Apa yang dilakukan if dalam JavaScript?",
+        "options": [
+          "Mengimpor CSS",
+          "Menjalankan kode berdasarkan kondisi",
+          "Membuat array",
+          "Mengulang kode selamanya"
+        ],
+        "correctAnswer": 1
+      },
+      {
+        "id": 7,
+        "text": "Apa hasil dari let x = 10;  x = 20;  console.log(x);?",
+        "options": [
+          "Error",
+          "10",
+          "20",
+          "30"
+        ],
+        "correctAnswer": 2
+      },
+      {
+        "id": 8,
+        "text": "Fungsi JavaScript dapat menerima parameter.",
+        "options": [
+          "Benar",
+          "Salah"
+        ],
+        "correctAnswer": 0
+      },
+      {
+        "id": 9,
+        "text": "Mana yang merupakan cara benar untuk memanggil fungsi bernama sapa?",
+        "options": [
+          "fuction sapa;",
+          "sapa();",
+          "call sapa;",
+          "run(sapa);"
+        ],
+        "correctAnswer": 1
+      },
+      {
+        "id": 10,
+        "text": "Apa fungsi const dalam JavaScript?",
+        "options": [
+          "Membuat variabel yang nilainya dapat diubah bebas",
+          "Membuat variabel yang tidak datap di-assign ulang",
+          "Membuat sebuah fungsi",
+          "Membuat sebuah perulangan"
+        ],
+        "correctAnswer": 1
+      }
+    ],
+    "creatorId": "usr_zs3i8i1",
+    "creatorName": "Hasan",
+    "createdAt": "2026-10-07T00:42:22.650Z",
+    "results": []
+  }
+}

@@ -1,0 +1,449 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>QuizLive - Platform Kuis Interaktif Real-Time</title>
+  <meta name="description" content="Platform kuis interaktif real-time. Buat kuis bebas, bagikan ke teman, dan pantau hasil secara langsung!">
+  <link rel="stylesheet" href="style.css">
+  <!-- Socket.io client -->
+  <script src="/socket.io/socket.io.js"></script>
+  <!-- Canvas Confetti CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+</head>
+<body>
+
+  <!-- Confetti Canvas -->
+  <canvas id="confetti-canvas"></canvas>
+
+  <!-- Header -->
+  <header>
+    <div class="header-container">
+      <div class="logo-area" id="logo-home-btn" title="Kembali ke Beranda">
+        <div class="logo-icon">⚡</div>
+        <div class="logo-text">
+          <h1>QuizLive</h1>
+          <span>Real-time Quiz Platform</span>
+        </div>
+      </div>
+
+      <div class="header-actions">
+        <!-- Online Pill -->
+        <div class="online-pill" id="online-pill-btn" title="Klik untuk melihat siapa saja yang online">
+          <span class="pulse-dot"></span>
+          <span id="header-online-count">1 Online</span>
+        </div>
+
+        <!-- User Profile Badge -->
+        <div class="user-profile-badge" id="profile-badge-btn" title="Ganti Nama atau Avatar">
+          <span class="user-avatar" id="header-user-avatar">🦊</span>
+          <span class="user-name" id="header-user-name">Tamu</span>
+          <span style="font-size: 0.7rem; color: var(--text-dim);">✏️</span>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Container -->
+  <main>
+    <!-- Navigation Tabs -->
+    <nav class="nav-tabs" id="main-nav-tabs">
+      <button class="tab-btn active" data-tab="home" id="tab-home">
+        <span>🏠</span> Beranda
+      </button>
+      <button class="tab-btn" data-tab="create" id="tab-create">
+        <span>➕</span> Buat Kuis Baru
+      </button>
+      <button class="tab-btn" data-tab="my-quizzes" id="tab-my-quizzes">
+        <span>📁</span> Kuis Saya
+      </button>
+      <button class="tab-btn" data-tab="online" id="tab-online">
+        <span>👥</span> Teman Online (<span id="tab-online-count">1</span>)
+      </button>
+    </nav>
+
+    <!-- TAB 1: BERANDA -->
+    <section id="view-home" class="tab-view">
+      <div class="hero-banner">
+        <h2 class="hero-title">Kuis Bebas Bersama Teman 🎯</h2>
+        <p class="hero-desc">
+          Bikin kuis custom dengan pertanyaan sesukamu, bagikan link rahasianya ke teman, dan pantau skor mereka secara langsung! Ingat: sebagai pembuat kuis, kamu hanya bisa memantau dan tidak bisa bermain sendiri.
+        </p>
+        <div class="hero-actions">
+          <button class="btn btn-primary" id="hero-create-btn">
+            <span>✨</span> Buat Kuis Sekarang
+          </button>
+          <button class="btn btn-secondary" id="hero-view-online-btn">
+            <span>🟢</span> Lihat Siapa yang Online
+          </button>
+        </div>
+      </div>
+
+      <div class="section-header">
+        <h3 class="section-title"><span>💡</span> Cara Kerjanya</h3>
+      </div>
+      <div class="grid-cards" style="margin-bottom: 2rem;">
+        <div class="quiz-card">
+          <div style="font-size: 2rem; margin-bottom: 0.5rem;">🎭</div>
+          <h4 style="font-size: 1.1rem; color: #fff; margin-bottom: 0.4rem;">1. Masuk Tanpa Email</h4>
+          <p class="quiz-card-desc">Cukup tentukan nama panggilan dan avatar sesukamu. Semua orang bisa melihat kamu aktif secara live!</p>
+        </div>
+        <div class="quiz-card">
+          <div style="font-size: 2rem; margin-bottom: 0.5rem;">📝</div>
+          <h4 style="font-size: 1.1rem; color: #fff; margin-bottom: 0.4rem;">2. Bikin Kuis Unik</h4>
+          <p class="quiz-card-desc">Bebas masukkan pertanyaan tentang apa saja: trivia, tebak-tebakan, tentang pertemanan, atau pelajaran.</p>
+        </div>
+        <div class="quiz-card">
+          <div style="font-size: 2rem; margin-bottom: 0.5rem;">🔗</div>
+          <h4 style="font-size: 1.1rem; color: #fff; margin-bottom: 0.4rem;">3. Bagikan Link</h4>
+          <p class="quiz-card-desc">Hanya orang yang mendapatkan link yang bisa memainkannya. Kamu sebagai pembuat bisa pantau peringkat mereka live!</p>
+        </div>
+      </div>
+
+      <!-- Quick Recent Quizzes by User -->
+      <div class="section-header">
+        <h3 class="section-title"><span>📚</span> Kuis Buatanmu Terakhir</h3>
+        <button class="btn btn-secondary btn-sm" id="btn-see-all-my-quizzes">Lihat Semua</button>
+      </div>
+      <div id="home-recent-quizzes-list" class="grid-cards">
+        <div class="empty-state">
+          <div class="empty-state-icon">📭</div>
+          <p>Belum ada kuis yang kamu buat.</p>
+          <button class="btn btn-primary btn-sm" style="margin-top: 1rem;" id="empty-state-create-btn">Buat Kuis Pertamamu</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 2: BUAT KUIS BARU -->
+    <section id="view-create" class="tab-view" style="display: none;">
+      <div class="glass-panel" style="padding: 2rem; max-width: 800px; margin: 0 auto;">
+        <div style="margin-bottom: 1.5rem; border-bottom: 1px solid var(--border-color); padding-bottom: 1rem;">
+          <h2 style="font-size: 1.5rem; font-weight: 800; color: #fff;">✍️ Buat Kuis Baru</h2>
+          <p style="color: var(--text-muted); font-size: 0.875rem; margin-top: 0.25rem;">
+            Rancang pertanyaan sesukamu. Setelah selesai, kamu akan mendapatkan tautan khusus untuk dikirim ke teman.
+          </p>
+        </div>
+
+        <form id="quiz-builder-form">
+          <!-- Quiz Title -->
+          <div class="form-group">
+            <label class="form-label" for="quiz-title-input">Judul Kuis <span style="color: var(--accent-rose);">*</span></label>
+            <input type="text" id="quiz-title-input" class="form-input" placeholder="Contoh: Seberapa Kenal Kamu Sama Aku? / Tebak Tebakan Kocak" required>
+          </div>
+
+          <!-- Quiz Description -->
+          <div class="form-group">
+            <label class="form-label" for="quiz-desc-input">Deskripsi Singkat (Opsional)</label>
+            <textarea id="quiz-desc-input" class="form-textarea" placeholder="Jelaskan sedikit tentang kuis ini..."></textarea>
+          </div>
+
+          <!-- Time Limit -->
+          <div class="form-group" style="max-width: 320px;">
+            <label class="form-label" for="quiz-timer-select">Waktu per Pertanyaan</label>
+            <select id="quiz-timer-select" class="form-select">
+              <option value="15">15 Detik (Cepat & Menegangkan)</option>
+              <option value="20" selected>20 Detik (Standar)</option>
+              <option value="30">30 Detik (Santai)</option>
+              <option value="0">Tanpa Batas Waktu</option>
+            </select>
+          </div>
+
+          <!-- Question Builders Container -->
+          <div style="margin: 2rem 0 1rem;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+              <h3 style="font-size: 1.15rem; font-weight: 700;">Daftar Pertanyaan (<span id="questions-count-badge">1</span>)</h3>
+              <span style="font-size: 0.8rem; color: var(--text-muted);">Centang radio button hijau untuk menandai jawaban yang BENAR</span>
+            </div>
+
+            <div id="questions-builder-list">
+              <!-- Dynamically populated question cards -->
+            </div>
+
+            <button type="button" class="btn btn-secondary" id="btn-add-question" style="width: 100%; margin-top: 0.5rem; border-style: dashed;">
+              <span>➕</span> Tambah Pertanyaan Berikutnya
+            </button>
+          </div>
+
+          <!-- Submit Builder -->
+          <div style="margin-top: 2rem; padding-top: 1.5rem; border-top: 1px solid var(--border-color); display: flex; justify-content: flex-end; gap: 1rem;">
+            <button type="submit" class="btn btn-primary" id="btn-save-quiz" style="padding: 0.85rem 2rem; font-size: 1rem;">
+              <span>🚀</span> Terbitkan Kuis & Ambil Link
+            </button>
+          </div>
+        </form>
+      </div>
+    </section>
+
+    <!-- TAB 3: KUIS SAYA -->
+    <section id="view-my-quizzes" class="tab-view" style="display: none;">
+      <div class="section-header">
+        <h2 class="section-title"><span>📁</span> Kuis yang Kamu Buat</h2>
+        <button class="btn btn-primary btn-sm" id="btn-create-quiz-shortcut"><span>➕</span> Buat Baru</button>
+      </div>
+      <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 1.5rem;">
+        Berikut adalah seluruh kuis yang telah kamu buat. Kamu bisa memantau siapa saja yang sudah bermain atau menyalin kembali tautannya.
+      </p>
+
+      <div id="my-quizzes-grid" class="grid-cards">
+        <!-- Dynamically rendered -->
+      </div>
+    </section>
+
+    <!-- TAB 4: TEMAN ONLINE -->
+    <section id="view-online" class="tab-view" style="display: none;">
+      <div class="section-header">
+        <h2 class="section-title"><span>👥</span> Pengguna yang Sedang Online (<span id="online-view-count">1</span>)</h2>
+        <span class="online-pill"><span class="pulse-dot"></span> Live Sync Aktif</span>
+      </div>
+      <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 1.5rem;">
+        Orang-orang yang saat ini sedang membuka website ini secara bersamaan. Siapapun yang online akan muncul di sini secara otomatis.
+      </p>
+
+      <div id="online-users-list" class="online-users-grid">
+        <!-- Dynamically rendered user cards -->
+      </div>
+    </section>
+
+    <!-- VIEW 5: PLAY QUIZ (Loaded via ?quiz=ID or direct join) -->
+    <section id="view-play" class="tab-view" style="display: none;">
+      <div class="quiz-play-container">
+
+        <!-- 5A. CREATOR BLOCKED SCREEN (If current user is the author) -->
+        <div id="creator-block-screen" style="display: none;">
+          <div class="creator-blocked-card">
+            <div class="creator-blocked-icon">🚫</div>
+            <h2 class="creator-blocked-title">Kamu adalah Pembuat Kuis Ini!</h2>
+            <p class="creator-blocked-desc">
+              Sesuai aturan sistem, <strong>pembuat kuis tidak diizinkan memainkan kuis buatannya sendiri</strong>. Bagikan tautan kuis ini ke temanmu, dan pantau nama serta skor mereka secara langsung di tabel bawah!
+            </p>
+            <div style="display: flex; justify-content: center; gap: 0.75rem; flex-wrap: wrap;">
+              <button class="btn btn-primary" id="btn-share-current-quiz">
+                <span>🔗</span> Salin Link & Bagikan
+              </button>
+              <button class="btn btn-secondary" id="btn-back-to-home-from-creator">
+                <span>🏠</span> Kembali ke Beranda
+              </button>
+            </div>
+          </div>
+
+          <!-- Creator Live Leaderboard / Responses -->
+          <div class="glass-panel" style="padding: 1.5rem;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+              <h3 style="font-size: 1.15rem; font-weight: 700; color: #fff;">📊 Hasil & Skor Pemain (Live)</h3>
+              <span class="online-pill" style="font-size: 0.75rem;"><span class="pulse-dot"></span> Terkoneksi Real-time</span>
+            </div>
+            <div class="results-table-wrap">
+              <table class="results-table">
+                <thead>
+                  <tr>
+                    <th>No</th>
+                    <th>Nama Pemain</th>
+                    <th>Skor</th>
+                    <th>Persentase</th>
+                    <th>Waktu Pengerjaan</th>
+                    <th>Tanggal</th>
+                  </tr>
+                </thead>
+                <tbody id="creator-results-tbody">
+                  <tr>
+                    <td colspan="6" style="text-align: center; color: var(--text-muted); padding: 2rem;">
+                      Belum ada teman yang menyelesaikan kuis ini. Kirim link-nya sekarang!
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- 5B. PLAYER QUIZ INTRO SCREEN -->
+        <div id="player-intro-screen" style="display: none;">
+          <div class="glass-panel" style="padding: 2.5rem; text-align: center;">
+            <div style="font-size: 3rem; margin-bottom: 0.75rem;">🎯</div>
+            <h2 id="play-quiz-title" style="font-size: 1.75rem; font-weight: 800; color: #fff; margin-bottom: 0.5rem;">Judul Kuis</h2>
+            <p id="play-quiz-desc" style="color: var(--text-muted); margin-bottom: 1.5rem; max-width: 550px; margin-left: auto; margin-right: auto; line-height: 1.6;"></p>
+
+            <div style="display: flex; justify-content: center; gap: 1.5rem; margin-bottom: 2rem; font-size: 0.9rem; color: var(--text-dim);">
+              <div>👤 Dibuat oleh: <strong id="play-quiz-creator" style="color: #fff;">-</strong></div>
+              <div>❓ Total: <strong id="play-quiz-total-q" style="color: #fff;">0 Soal</strong></div>
+              <div>⏱️ Timer: <strong id="play-quiz-timer-info" style="color: #fff;">20 dtk/soal</strong></div>
+            </div>
+
+            <div style="background: rgba(255, 255, 255, 0.04); padding: 1rem 1.5rem; border-radius: var(--radius-md); max-width: 400px; margin: 0 auto 1.75rem; text-align: left; border: 1px solid var(--border-color);">
+              <label style="font-size: 0.8rem; font-weight: 600; color: var(--text-muted); display: block; margin-bottom: 0.4rem;">Nama Kamu Saat Bermain:</label>
+              <div style="display: flex; align-items: center; gap: 0.5rem;">
+                <span id="player-screen-avatar" style="font-size: 1.5rem;">🦊</span>
+                <input type="text" id="player-screen-name-input" class="form-input" style="padding: 0.5rem 0.75rem;" placeholder="Nama panggilan...">
+              </div>
+            </div>
+
+            <button class="btn btn-primary" id="btn-start-quiz-playing" style="padding: 0.9rem 2.5rem; font-size: 1.05rem;">
+              <span>🎮</span> Mulai Kerjakan Kuis!
+            </button>
+          </div>
+        </div>
+
+        <!-- 5C. PLAYER ACTIVE QUESTION SCREEN -->
+        <div id="player-game-screen" style="display: none;">
+          <div class="play-header">
+            <div style="font-size: 0.9rem; font-weight: 700; color: #a5b4fc;">
+              Pertanyaan <span id="game-current-q-index">1</span> dari <span id="game-total-q-count">5</span>
+            </div>
+            <div class="timer-pill" id="game-timer-pill" style="display: none;">
+              <span>⏱️</span> <span id="game-timer-seconds">20s</span>
+            </div>
+          </div>
+
+          <div class="quiz-progress-bar-wrap">
+            <div class="quiz-progress-bar" id="game-progress-bar"></div>
+          </div>
+
+          <div class="question-card">
+            <h3 class="question-text" id="game-question-text">Teks Pertanyaan Kuis...</h3>
+            <div class="answer-options-grid" id="game-options-container">
+              <!-- Dynamically populated option buttons -->
+            </div>
+          </div>
+
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <span style="font-size: 0.85rem; color: var(--text-dim);" id="game-hint-text">Pilih salah satu jawaban di atas</span>
+            <button class="btn btn-primary" id="btn-game-next" style="display: none;">
+              Selanjutnya <span>➡️</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- 5D. PLAYER RESULT & SCORE SCREEN -->
+        <div id="player-result-screen" style="display: none;">
+          <div class="glass-panel" style="padding: 2.5rem; text-align: center; margin-bottom: 2rem;">
+            <div style="font-size: 3.5rem; margin-bottom: 0.5rem;" id="result-emoji">🎉</div>
+            <h2 style="font-size: 1.8rem; font-weight: 800; color: #fff; margin-bottom: 0.25rem;" id="result-title">Kuis Selesai!</h2>
+            <p style="color: var(--text-muted); font-size: 0.95rem; margin-bottom: 1.75rem;" id="result-subtitle">Hebat! Berikut perolehan skormu:</p>
+
+            <div style="display: inline-flex; flex-direction: column; align-items: center; justify-content: center; width: 150px; height: 150px; border-radius: 50%; background: linear-gradient(135deg, rgba(99, 102, 241, 0.2), rgba(16, 185, 129, 0.2)); border: 3px solid #10b981; margin-bottom: 1.5rem; box-shadow: 0 0 30px rgba(16, 185, 129, 0.3);">
+              <span style="font-size: 2.5rem; font-weight: 800; color: #fff;" id="result-score-number">8/10</span>
+              <span style="font-size: 0.85rem; font-weight: 700; color: #34d399;" id="result-percent-number">80% Benar</span>
+            </div>
+
+            <!-- Action buttons -->
+            <div style="display: flex; justify-content: center; gap: 0.75rem; flex-wrap: wrap;">
+              <button class="btn btn-secondary" id="btn-result-review-toggle">
+                <span>📋</span> Lihat Pembahasan Soal
+              </button>
+              <button class="btn btn-primary" id="btn-result-create-own">
+                <span>✨</span> Buat Kuis Sendiri
+              </button>
+              <button class="btn btn-secondary" id="btn-result-home">
+                <span>🏠</span> Beranda
+              </button>
+            </div>
+          </div>
+
+          <!-- Answer Breakdown Review -->
+          <div id="result-review-section" class="glass-panel" style="padding: 1.5rem; display: none; margin-bottom: 2rem;">
+            <h3 style="font-size: 1.15rem; font-weight: 700; margin-bottom: 1rem; color: #fff;">📋 Pembahasan Jawaban</h3>
+            <div id="result-breakdown-list" style="display: flex; flex-direction: column; gap: 0.75rem;">
+              <!-- Dynamically populated breakdown -->
+            </div>
+          </div>
+
+          <!-- Leaderboard in Result Screen -->
+          <div class="glass-panel" style="padding: 1.5rem;">
+            <h3 style="font-size: 1.15rem; font-weight: 700; margin-bottom: 1rem; color: #fff;">🏆 Papan Peringkat Kuis Ini</h3>
+            <div class="results-table-wrap">
+              <table class="results-table">
+                <thead>
+                  <tr>
+                    <th>Rank</th>
+                    <th>Nama Pemain</th>
+                    <th>Skor</th>
+                    <th>Persentase</th>
+                    <th>Waktu</th>
+                  </tr>
+                </thead>
+                <tbody id="result-leaderboard-tbody">
+                  <!-- Rendered dynamically -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </section>
+  </main>
+
+  <!-- MODAL: SET USER NICKNAME & AVATAR -->
+  <div class="modal-overlay" id="modal-profile">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3 class="modal-title">Atur Profil Kamu</h3>
+        <button class="modal-close-btn" id="modal-profile-close">&times;</button>
+      </div>
+      <p style="color: var(--text-muted); font-size: 0.875rem; margin-bottom: 1.25rem;">
+        Tidak perlu email atau kata sandi! Masukkan nama bebas apapun yang ingin kamu tampilkan kepada orang lain saat online atau bermain kuis.
+      </p>
+
+      <div class="form-group">
+        <label class="form-label">Pilih Avatar:</label>
+        <div class="avatar-grid" id="avatar-choices-grid">
+          <!-- Populated in JS: 🦊, 🐯, 🐼, 🦁, 🐱, 🐶, 🚀, ⚡, 🎮, 🦄, 🤖, 🍕, 👑, 🔥, 🎩, 👻, 🌟, 🦉 -->
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="profile-name-input">Nama Panggilan (Bebas):</label>
+        <input type="text" id="profile-name-input" class="form-input" placeholder="Masukkan nama panggilan..." maxlength="25">
+      </div>
+
+      <button class="btn btn-primary" id="btn-save-profile" style="width: 100%; margin-top: 0.5rem;">
+        Simpan & Masuk
+      </button>
+    </div>
+  </div>
+
+  <!-- MODAL: SHARE QUIZ LINK -->
+  <div class="modal-overlay" id="modal-share">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3 class="modal-title">Bagikan Kuis Ini 🔗</h3>
+        <button class="modal-close-btn" id="modal-share-close">&times;</button>
+      </div>
+
+      <p style="color: var(--text-muted); font-size: 0.875rem; margin-bottom: 1rem;">
+        Kuis siap dimainkan! Kirimkan tautan ini kepada temanmu. <strong>Hanya orang yang menerima link ini yang bisa memainkannya.</strong>
+      </p>
+
+      <div class="form-group">
+        <label class="form-label">Tautan Kuis:</label>
+        <div style="display: flex; gap: 0.5rem;">
+          <input type="text" id="share-link-input" class="form-input" readonly>
+          <button class="btn btn-primary" id="btn-copy-share-link" style="white-space: nowrap;">
+            📋 Salin
+          </button>
+        </div>
+      </div>
+
+      <div style="display: flex; gap: 0.75rem; margin-top: 1rem;">
+        <button class="btn btn-success" id="btn-whatsapp-share" style="flex: 1;">
+          💬 Kirim ke WhatsApp
+        </button>
+        <button class="btn btn-secondary" id="btn-view-as-creator" style="flex: 1;">
+          👁️ Buka Halaman Kuis
+        </button>
+      </div>
+
+      <div style="margin-top: 1.5rem; padding: 1rem; background: rgba(239, 68, 68, 0.08); border: 1px solid rgba(239, 68, 68, 0.2); border-radius: var(--radius-md); font-size: 0.8rem; color: #fca5a5; line-height: 1.5;">
+        🔒 <strong>Pengingat untukmu:</strong> Karena kamu adalah pembuat kuis ini, kamu tidak dapat memainkannya. Tautan ini akan menampilkan halaman statistik live saat kamu membukanya!
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Notification Container -->
+  <div id="toast-container"></div>
+
+  <!-- Scripts -->
+  <script src="audio.js"></script>
+  <script src="client.js"></script>
+</body>
+</html>
