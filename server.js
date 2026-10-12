@@ -247,6 +247,7 @@ app.post('/api/quizzes/:id/submit', (req, res) => {
       score: resultEntry.score,
       total: resultEntry.total,
       percentage: resultEntry.percentage,
+      timeSpent: resultEntry.timeSpent,
       completedAt: resultEntry.completedAt
     }
   });
@@ -258,13 +259,21 @@ app.post('/api/quizzes/:id/submit', (req, res) => {
     score: `${score}/${total}`
   });
 
+  // Sort leaderboard: highest score first, fastest time spent, earliest completedAt
+  const sortedLeaderboard = [...quiz.results].sort((a, b) => {
+    if (b.score !== a.score) return b.score - a.score;
+    if ((a.timeSpent || 0) !== (b.timeSpent || 0)) return (a.timeSpent || 0) - (b.timeSpent || 0);
+    return new Date(a.completedAt) - new Date(b.completedAt);
+  });
+
   res.json({
     success: true,
     score,
     total,
     percentage,
     breakdown,
-    leaderboard: quiz.results.slice(0, 20).map(r => ({
+    rawResults: quiz.results.slice(0, 50),
+    leaderboard: sortedLeaderboard.slice(0, 50).map(r => ({
       playerName: r.playerName,
       score: r.score,
       total: r.total,

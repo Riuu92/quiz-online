@@ -227,21 +227,69 @@
           </div>
 
           <!-- Creator Live Leaderboard / Responses -->
+          <!-- Creator Live Leaderboard / Responses -->
           <div class="glass-panel" style="padding: 1.5rem;">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem; flex-wrap: wrap; gap: 0.5rem;">
               <h3 style="font-size: 1.15rem; font-weight: 700; color: #fff;">📊 Hasil & Skor Pemain (Live)</h3>
               <span class="online-pill" style="font-size: 0.75rem;"><span class="pulse-dot"></span> Terkoneksi Real-time</span>
             </div>
+
+            <!-- Creator Stat Spotlight Cards -->
+            <div class="stat-highlight-grid" id="creator-stats-grid">
+              <div class="stat-highlight-card rank-card">
+                <div class="stat-card-icon">👑</div>
+                <div class="stat-card-info">
+                  <span class="stat-card-label">Rank #1 Saat Ini</span>
+                  <span class="stat-card-val" id="creator-stat-rank1">-</span>
+                  <span class="stat-card-sub" id="creator-stat-rank1-sub">Belum ada pemain</span>
+                </div>
+              </div>
+              <div class="stat-highlight-card latest-card">
+                <div class="stat-card-icon">🕒</div>
+                <div class="stat-card-info">
+                  <span class="stat-card-label">Terakhir Main</span>
+                  <span class="stat-card-val" id="creator-stat-latest">-</span>
+                  <span class="stat-card-sub" id="creator-stat-latest-sub">Belum ada</span>
+                </div>
+              </div>
+              <div class="stat-highlight-card fastest-card">
+                <div class="stat-card-icon">⚡</div>
+                <div class="stat-card-info">
+                  <span class="stat-card-label">Paling Cepat</span>
+                  <span class="stat-card-val" id="creator-stat-fastest">-</span>
+                  <span class="stat-card-sub" id="creator-stat-fastest-sub">Belum ada</span>
+                </div>
+              </div>
+              <div class="stat-highlight-card">
+                <div class="stat-card-icon">👥</div>
+                <div class="stat-card-info">
+                  <span class="stat-card-label">Total Pemain</span>
+                  <span class="stat-card-val" id="creator-stat-total">0 Orang</span>
+                  <span class="stat-card-sub" id="creator-stat-avg">Rata-rata: -</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Creator Leaderboard Filter Pills -->
+            <div class="leaderboard-filter-bar">
+              <span style="font-size: 0.85rem; color: var(--text-muted); font-weight: 600;">Urutkan Tampilan:</span>
+              <div class="leaderboard-filter-group" id="creator-filter-group">
+                <button type="button" class="filter-pill-btn active" data-filter="rank">🏆 Peringkat Skor</button>
+                <button type="button" class="filter-pill-btn" data-filter="latest">🕒 Terakhir Main</button>
+                <button type="button" class="filter-pill-btn" data-filter="fastest">⚡ Tercepat</button>
+              </div>
+            </div>
+
             <div class="results-table-wrap">
               <table class="results-table">
                 <thead>
                   <tr>
-                    <th>No</th>
+                    <th>Rank / Posisi</th>
                     <th>Nama Pemain</th>
                     <th>Skor</th>
                     <th>Persentase</th>
                     <th>Waktu Pengerjaan</th>
-                    <th>Tanggal</th>
+                    <th>Waktu Submit</th>
                   </tr>
                 </thead>
                 <tbody id="creator-results-tbody">
@@ -349,16 +397,67 @@
 
           <!-- Leaderboard in Result Screen -->
           <div class="glass-panel" style="padding: 1.5rem;">
-            <h3 style="font-size: 1.15rem; font-weight: 700; margin-bottom: 1rem; color: #fff;">🏆 Papan Peringkat Kuis Ini</h3>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem; flex-wrap: wrap; gap: 0.5rem;">
+              <h3 style="font-size: 1.15rem; font-weight: 700; color: #fff;">🏆 Papan Peringkat Kuis Ini</h3>
+              <span id="player-leaderboard-count" style="font-size: 0.8rem; color: var(--text-muted);"></span>
+            </div>
+
+            <!-- Player Spotlight Cards -->
+            <div class="stat-highlight-grid" id="player-stats-grid">
+              <div class="stat-highlight-card rank-card">
+                <div class="stat-card-icon">👑</div>
+                <div class="stat-card-info">
+                  <span class="stat-card-label">Juara 1 (Rank #1)</span>
+                  <span class="stat-card-val" id="player-stat-rank1">-</span>
+                  <span class="stat-card-sub" id="player-stat-rank1-sub">Belum ada</span>
+                </div>
+              </div>
+              <div class="stat-highlight-card latest-card">
+                <div class="stat-card-icon">🕒</div>
+                <div class="stat-card-info">
+                  <span class="stat-card-label">Terakhir Main</span>
+                  <span class="stat-card-val" id="player-stat-latest">-</span>
+                  <span class="stat-card-sub" id="player-stat-latest-sub">Belum ada</span>
+                </div>
+              </div>
+              <div class="stat-highlight-card fastest-card">
+                <div class="stat-card-icon">⚡</div>
+                <div class="stat-card-info">
+                  <span class="stat-card-label">Paling Cepat</span>
+                  <span class="stat-card-val" id="player-stat-fastest">-</span>
+                  <span class="stat-card-sub" id="player-stat-fastest-sub">Belum ada</span>
+                </div>
+              </div>
+              <div class="stat-highlight-card">
+                <div class="stat-card-icon">👥</div>
+                <div class="stat-card-info">
+                  <span class="stat-card-label">Total Peserta</span>
+                  <span class="stat-card-val" id="player-stat-total">0 Pemain</span>
+                  <span class="stat-card-sub" id="player-stat-avg">Rata-rata: -</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Player Leaderboard Filter Pills -->
+            <div class="leaderboard-filter-bar">
+              <span style="font-size: 0.85rem; color: var(--text-muted); font-weight: 600;">Lihat Berdasarkan:</span>
+              <div class="leaderboard-filter-group" id="player-filter-group">
+                <button type="button" class="filter-pill-btn active" data-filter="rank">🏆 Peringkat Skor</button>
+                <button type="button" class="filter-pill-btn" data-filter="latest">🕒 Terakhir Main</button>
+                <button type="button" class="filter-pill-btn" data-filter="fastest">⚡ Tercepat</button>
+              </div>
+            </div>
+
             <div class="results-table-wrap">
               <table class="results-table">
                 <thead>
                   <tr>
-                    <th>Rank</th>
+                    <th>Rank / Posisi</th>
                     <th>Nama Pemain</th>
                     <th>Skor</th>
                     <th>Persentase</th>
-                    <th>Waktu</th>
+                    <th>Waktu Pengerjaan</th>
+                    <th>Waktu Submit</th>
                   </tr>
                 </thead>
                 <tbody id="result-leaderboard-tbody">

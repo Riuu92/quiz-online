@@ -15,7 +15,10 @@ const state = {
   questionTimer: null,
   questionTimeRemaining: 20,
   quizStartTime: null,
-  builderQuestions: []
+  builderQuestions: [],
+  creatorFilter: 'rank',
+  playerFilter: 'rank',
+  playerResults: []
 };
 
 // Save user id immediately
@@ -120,6 +123,16 @@ const elements = {
   btnShareCurrentQuiz: document.getElementById('btn-share-current-quiz'),
   btnBackToHomeFromCreator: document.getElementById('btn-back-to-home-from-creator'),
   creatorResultsTbody: document.getElementById('creator-results-tbody'),
+  creatorStatsGrid: document.getElementById('creator-stats-grid'),
+  creatorStatRank1: document.getElementById('creator-stat-rank1'),
+  creatorStatRank1Sub: document.getElementById('creator-stat-rank1-sub'),
+  creatorStatLatest: document.getElementById('creator-stat-latest'),
+  creatorStatLatestSub: document.getElementById('creator-stat-latest-sub'),
+  creatorStatFastest: document.getElementById('creator-stat-fastest'),
+  creatorStatFastestSub: document.getElementById('creator-stat-fastest-sub'),
+  creatorStatTotal: document.getElementById('creator-stat-total'),
+  creatorStatAvg: document.getElementById('creator-stat-avg'),
+  creatorFilterGroup: document.getElementById('creator-filter-group'),
 
   playerIntroScreen: document.getElementById('player-intro-screen'),
   playQuizTitle: document.getElementById('play-quiz-title'),
@@ -152,6 +165,17 @@ const elements = {
   resultReviewSection: document.getElementById('result-review-section'),
   resultBreakdownList: document.getElementById('result-breakdown-list'),
   resultLeaderboardTbody: document.getElementById('result-leaderboard-tbody'),
+  playerStatsGrid: document.getElementById('player-stats-grid'),
+  playerStatRank1: document.getElementById('player-stat-rank1'),
+  playerStatRank1Sub: document.getElementById('player-stat-rank1-sub'),
+  playerStatLatest: document.getElementById('player-stat-latest'),
+  playerStatLatestSub: document.getElementById('player-stat-latest-sub'),
+  playerStatFastest: document.getElementById('player-stat-fastest'),
+  playerStatFastestSub: document.getElementById('player-stat-fastest-sub'),
+  playerStatTotal: document.getElementById('player-stat-total'),
+  playerStatAvg: document.getElementById('player-stat-avg'),
+  playerFilterGroup: document.getElementById('player-filter-group'),
+  playerLeaderboardCount: document.getElementById('player-leaderboard-count'),
   btnResultCreateOwn: document.getElementById('btn-result-create-own'),
   btnResultHome: document.getElementById('btn-result-home'),
 
@@ -758,6 +782,73 @@ async function loadQuizById(quizId) {
   }
 }
 
+// HELPER: Sort results by filter mode
+function sortQuizResults(results, filterType = 'rank') {
+  if (!results || !Array.isArray(results)) return [];
+  const list = [...results];
+
+  if (filterType === 'latest') {
+    // Terakhir kali main (waktu selesai paling baru di atas)
+    return list.sort((a, b) => new Date(b.completedAt || 0) - new Date(a.completedAt || 0));
+  }
+
+  if (filterType === 'fastest') {
+    // Paling cepat menyelesaikan kuis (durasi waktu paling sedikit di atas)
+    return list.sort((a, b) => {
+      const timeA = Number(a.timeSpent) || 999999;
+      const timeB = Number(b.timeSpent) || 999999;
+      if (timeA !== timeB) return timeA - timeB;
+      return (b.score || 0) - (a.score || 0);
+    });
+  }
+
+  // Default: 'rank' - Peringkat Skor Tertinggi
+  // 1. Skor / persentase tertinggi
+  // 2. Jika skor sama: waktu pengerjaan tercepat
+  // 3. Jika masih sama: siapa yang selesai lebih awal
+  return list.sort((a, b) => {
+    const scoreDiff = (b.score || 0) - (a.score || 0);
+    if (scoreDiff !== 0) return scoreDiff;
+    const pctDiff = (b.percentage || 0) - (a.percentage || 0);
+    if (pctDiff !== 0) return pctDiff;
+    const timeA = Number(a.timeSpent) || 999999;
+    const timeB = Number(b.timeSpent) || 999999;
+    if (timeA !== timeB) return timeA - timeB;
+    return new Date(a.completedAt || 0) - new Date(b.completedAt || 0);
+  });
+}
+
+// HELPER: Calculate leaderboard spotlight statistics
+function calculateQuizStats(results) {
+  if (!results || results.length === 0) {
+    return {
+      rank1: null,
+      latest: null,
+      fastest: null,
+      total: 0,
+      avgScore: 0
+    };
+  }
+
+  // Rank 1: best score, tie-break by fastest time
+  const byRank = sortQuizResults(results, 'rank');
+  const rank1 = byRank[0];
+
+  // Latest: newest completedAt
+  const byLatest = sortQuizResults(results, 'latest');
+  const latest = byLatest[0];
+
+  // Fastest: shortest valid timeSpent (> 0)
+  const validTimes = results.filter(r => Number(r.timeSpent) > 0);
+  const byFastest = sortQuizResults(validTimes.length > 0 ? validTimes : results, 'fastest');
+  const fastest = byFastest[0];
+
+  const total = results.length;
+  const avgScore = Math.round(results.reduce((acc, r) => acc + (r.percentage || 0), 0) / total);
+
+  return { rank1, latest, fastest, total, avgScore };
+}
+
 // 1. SETUP CREATOR VIEW (BLOCKED FROM PLAYING)
 function setupCreatorView(quiz) {
   elements.creatorBlockScreen.style.display = 'block';
@@ -775,13 +866,66 @@ function setupCreatorView(quiz) {
     switchTab('home');
   };
 
+  // Reset creator filter to 'rank'
+  state.creatorFilter = 'rank';
+  if (elements.creatorFilterGroup) {
+    elements.creatorFilterGroup.querySelectorAll('.filter-pill-btn').forEach(b => {
+      b.classList.toggle('active', b.dataset.filter === 'rank');
+    });
+  }
+
   // Populate leaderboard table
   renderCreatorLeaderboard(quiz.results || []);
 }
 
 function renderCreatorLeaderboard(results) {
+  if (!state.currentQuiz) return;
+  const allResults = results || state.currentQuiz.results || [];
+  const stats = calculateQuizStats(allResults);
+
+  // Update spotlight cards
+  if (elements.creatorStatRank1) {
+    if (stats.rank1) {
+      elements.creatorStatRank1.textContent = stats.rank1.playerName;
+      elements.creatorStatRank1Sub.textContent = `Skor ${stats.rank1.score}/${stats.rank1.total} (${stats.rank1.percentage}%)`;
+    } else {
+      elements.creatorStatRank1.textContent = '-';
+      elements.creatorStatRank1Sub.textContent = 'Belum ada pemain';
+    }
+  }
+
+  if (elements.creatorStatLatest) {
+    if (stats.latest) {
+      elements.creatorStatLatest.textContent = stats.latest.playerName;
+      const timeStr = stats.latest.completedAt ? new Date(stats.latest.completedAt).toLocaleTimeString('id-ID') : '-';
+      elements.creatorStatLatestSub.textContent = `Selesai ${timeStr}`;
+    } else {
+      elements.creatorStatLatest.textContent = '-';
+      elements.creatorStatLatestSub.textContent = 'Belum ada';
+    }
+  }
+
+  if (elements.creatorStatFastest) {
+    if (stats.fastest) {
+      elements.creatorStatFastest.textContent = stats.fastest.playerName;
+      elements.creatorStatFastestSub.textContent = `${stats.fastest.timeSpent || 0}s (${stats.fastest.percentage}%)`;
+    } else {
+      elements.creatorStatFastest.textContent = '-';
+      elements.creatorStatFastestSub.textContent = 'Belum ada';
+    }
+  }
+
+  if (elements.creatorStatTotal) {
+    elements.creatorStatTotal.textContent = `${stats.total} Orang`;
+    elements.creatorStatAvg.textContent = stats.total > 0 ? `Rata-rata: ${stats.avgScore}%` : 'Rata-rata: -';
+  }
+
+  // Sort according to active creator filter
+  const currentFilter = state.creatorFilter || 'rank';
+  const sorted = sortQuizResults(allResults, currentFilter);
+
   elements.creatorResultsTbody.innerHTML = '';
-  if (!results || results.length === 0) {
+  if (sorted.length === 0) {
     elements.creatorResultsTbody.innerHTML = `
       <tr>
         <td colspan="6" style="text-align: center; color: var(--text-muted); padding: 2rem;">
@@ -791,21 +935,33 @@ function renderCreatorLeaderboard(results) {
     return;
   }
 
-  results.forEach((r, idx) => {
+  sorted.forEach((r, idx) => {
+    let badge = `#${idx + 1}`;
+    if (currentFilter === 'rank') {
+      if (idx === 0) badge = '🥇 Rank 1';
+      else if (idx === 1) badge = '🥈 Rank 2';
+      else if (idx === 2) badge = '🥉 Rank 3';
+    } else if (currentFilter === 'latest') {
+      badge = `🕒 #${idx + 1}`;
+    } else if (currentFilter === 'fastest') {
+      badge = `⚡ #${idx + 1}`;
+    }
+
     const tr = document.createElement('tr');
     tr.innerHTML = `
-      <td><strong>#${idx + 1}</strong></td>
+      <td><strong>${badge}</strong></td>
       <td><span style="font-weight: 700;">${escapeHtml(r.playerName)}</span></td>
       <td><span style="color: #34d399; font-weight: 700;">${r.score} / ${r.total}</span></td>
       <td><strong>${r.percentage}%</strong></td>
       <td>${r.timeSpent ? r.timeSpent + 's' : '-'}</td>
-      <td style="color: var(--text-dim); font-size: 0.8rem;">${new Date(r.completedAt).toLocaleTimeString('id-ID')}</td>
+      <td style="color: var(--text-dim); font-size: 0.8rem;">${r.completedAt ? new Date(r.completedAt).toLocaleTimeString('id-ID') : '-'}</td>
     `;
     elements.creatorResultsTbody.appendChild(tr);
   });
 }
 
 function addOrUpdateCreatorLeaderboard(result) {
+  if (!state.currentQuiz) return;
   if (!state.currentQuiz.results) state.currentQuiz.results = [];
   state.currentQuiz.results.unshift(result);
   renderCreatorLeaderboard(state.currentQuiz.results);
@@ -1057,21 +1213,97 @@ function renderResultView(data) {
   });
 
   // Leaderboard
+  state.playerResults = data.rawResults || data.leaderboard || [];
+  state.playerFilter = 'rank';
+  if (elements.playerFilterGroup) {
+    elements.playerFilterGroup.querySelectorAll('.filter-pill-btn').forEach(b => {
+      b.classList.toggle('active', b.dataset.filter === 'rank');
+    });
+  }
+  renderPlayerLeaderboard();
+}
+
+function renderPlayerLeaderboard() {
+  const allResults = state.playerResults || [];
+  const stats = calculateQuizStats(allResults);
+
+  if (elements.playerLeaderboardCount) {
+    elements.playerLeaderboardCount.textContent = `Total: ${stats.total} Peserta`;
+  }
+
+  // Update spotlight cards
+  if (elements.playerStatRank1) {
+    if (stats.rank1) {
+      elements.playerStatRank1.textContent = stats.rank1.playerName;
+      elements.playerStatRank1Sub.textContent = `Skor ${stats.rank1.score}/${stats.rank1.total} (${stats.rank1.percentage}%)`;
+    } else {
+      elements.playerStatRank1.textContent = '-';
+      elements.playerStatRank1Sub.textContent = 'Belum ada';
+    }
+  }
+
+  if (elements.playerStatLatest) {
+    if (stats.latest) {
+      elements.playerStatLatest.textContent = stats.latest.playerName;
+      const timeStr = stats.latest.completedAt ? new Date(stats.latest.completedAt).toLocaleTimeString('id-ID') : '-';
+      elements.playerStatLatestSub.textContent = `Selesai ${timeStr}`;
+    } else {
+      elements.playerStatLatest.textContent = '-';
+      elements.playerStatLatestSub.textContent = 'Belum ada';
+    }
+  }
+
+  if (elements.playerStatFastest) {
+    if (stats.fastest) {
+      elements.playerStatFastest.textContent = stats.fastest.playerName;
+      elements.playerStatFastestSub.textContent = `${stats.fastest.timeSpent || 0}s (${stats.fastest.percentage}%)`;
+    } else {
+      elements.playerStatFastest.textContent = '-';
+      elements.playerStatFastestSub.textContent = 'Belum ada';
+    }
+  }
+
+  if (elements.playerStatTotal) {
+    elements.playerStatTotal.textContent = `${stats.total} Pemain`;
+    elements.playerStatAvg.textContent = stats.total > 0 ? `Rata-rata: ${stats.avgScore}%` : 'Rata-rata: -';
+  }
+
+  // Sort by active player filter
+  const currentFilter = state.playerFilter || 'rank';
+  const sorted = sortQuizResults(allResults, currentFilter);
+
   elements.resultLeaderboardTbody.innerHTML = '';
-  (data.leaderboard || []).forEach((r, idx) => {
-    let medal = `#${idx + 1}`;
-    if (idx === 0) medal = '🥇 1';
-    if (idx === 1) medal = '🥈 2';
-    if (idx === 2) medal = '🥉 3';
+  if (sorted.length === 0) {
+    elements.resultLeaderboardTbody.innerHTML = `
+      <tr>
+        <td colspan="6" style="text-align: center; color: var(--text-muted); padding: 2rem;">
+          Belum ada data pengerjaan kuis.
+        </td>
+      </tr>`;
+    return;
+  }
+
+  sorted.forEach((r, idx) => {
+    let badge = `#${idx + 1}`;
+    if (currentFilter === 'rank') {
+      if (idx === 0) badge = '🥇 Rank 1';
+      else if (idx === 1) badge = '🥈 Rank 2';
+      else if (idx === 2) badge = '🥉 Rank 3';
+    } else if (currentFilter === 'latest') {
+      badge = `🕒 #${idx + 1}`;
+    } else if (currentFilter === 'fastest') {
+      badge = `⚡ #${idx + 1}`;
+    }
 
     const isCurrent = r.playerName === state.user.name;
     const tr = document.createElement('tr');
     tr.innerHTML = `
-      <td><strong>${medal}</strong></td>
-      <td><strong>${escapeHtml(r.playerName)}</strong> ${isCurrent ? '<span style="font-size: 0.7rem; background: var(--primary); padding: 0.1rem 0.3rem; border-radius: 4px;">Kamu</span>' : ''}</td>
+      <td><strong>${badge}</strong></td>
+      <td><strong>${escapeHtml(r.playerName)}</strong> ${isCurrent ? '<span style="font-size: 0.7rem; background: var(--primary); padding: 0.1rem 0.35rem; border-radius: 4px; margin-left: 0.35rem;">Kamu</span>' : ''}</td>
       <td><span style="color: #34d399; font-weight: 700;">${r.score}/${r.total}</span></td>
-      <td>${r.percentage}%</td>
+      <td><strong>${r.percentage}%</strong></td>
       <td>${r.timeSpent ? r.timeSpent + 's' : '-'}</td>
+      <td style="color: var(--text-dim); font-size: 0.8rem;">${r.completedAt ? new Date(r.completedAt).toLocaleTimeString('id-ID') : '-'}</td>
     `;
     elements.resultLeaderboardTbody.appendChild(tr);
   });
@@ -1143,6 +1375,30 @@ function bindEvents() {
       elements.modalShare.classList.remove('active');
     }
   });
+
+  // Leaderboard Filter Buttons (Creator)
+  if (elements.creatorFilterGroup) {
+    elements.creatorFilterGroup.querySelectorAll('.filter-pill-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        elements.creatorFilterGroup.querySelectorAll('.filter-pill-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        state.creatorFilter = btn.dataset.filter;
+        renderCreatorLeaderboard();
+      });
+    });
+  }
+
+  // Leaderboard Filter Buttons (Player)
+  if (elements.playerFilterGroup) {
+    elements.playerFilterGroup.querySelectorAll('.filter-pill-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        elements.playerFilterGroup.querySelectorAll('.filter-pill-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        state.playerFilter = btn.dataset.filter;
+        renderPlayerLeaderboard();
+      });
+    });
+  }
 
   // Handle browser back / forward buttons
   window.addEventListener('popstate', () => {
