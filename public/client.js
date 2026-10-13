@@ -24,6 +24,24 @@ const state = {
 // Save user id immediately
 localStorage.setItem('quiz_user_id', state.user.userId);
 
+// ──────────────────────────────────────────────
+// PLAY-ONCE TRACKING (stored in localStorage)
+// Key: quiz_played_{quizId}_{userId}
+// Value: JSON { score, total, percentage, timeSpent, playedAt }
+// ──────────────────────────────────────────────
+function getPlayRecord(quizId) {
+  const key = `quiz_played_${quizId}_${state.user.userId}`;
+  try {
+    const raw = localStorage.getItem(key);
+    return raw ? JSON.parse(raw) : null;
+  } catch { return null; }
+}
+
+function savePlayRecord(quizId, record) {
+  const key = `quiz_played_${quizId}_${state.user.userId}`;
+  localStorage.setItem(key, JSON.stringify(record));
+}
+
 // Setup Socket.io
 const socket = io();
 
@@ -107,6 +125,8 @@ const elements = {
   quizTitleInput: document.getElementById('quiz-title-input'),
   quizDescInput: document.getElementById('quiz-desc-input'),
   quizTimerSelect: document.getElementById('quiz-timer-select'),
+  quizTimerCustomWrap: document.getElementById('quiz-timer-custom-wrap'),
+  quizTimerCustomInput: document.getElementById('quiz-timer-custom-input'),
   questionsCountBadge: document.getElementById('questions-count-badge'),
   questionsBuilderList: document.getElementById('questions-builder-list'),
   btnAddQuestion: document.getElementById('btn-add-question'),
@@ -119,6 +139,13 @@ const elements = {
   onlineUsersList: document.getElementById('online-users-list'),
 
   // Play Quiz Views
+  alreadyPlayedScreen: document.getElementById('already-played-screen'),
+  alreadyPlayedQuizTitle: document.getElementById('already-played-quiz-title'),
+  alreadyPlayedScore: document.getElementById('already-played-score'),
+  alreadyPlayedPercent: document.getElementById('already-played-percent'),
+  alreadyPlayedTime: document.getElementById('already-played-time'),
+  btnAlreadyPlayedCreate: document.getElementById('btn-already-played-create'),
+  btnAlreadyPlayedHome: document.getElementById('btn-already-played-home'),
   creatorBlockScreen: document.getElementById('creator-block-screen'),
   btnShareCurrentQuiz: document.getElementById('btn-share-current-quiz'),
   btnBackToHomeFromCreator: document.getElementById('btn-back-to-home-from-creator'),
@@ -370,12 +397,16 @@ function initQuizBuilderDefault() {
     {
       text: '',
       options: ['', '', '', ''],
-      correctAnswer: 0
+      correctAnswer: 0,
+      timerMode: 'inherit',
+      timerCustom: 20
     },
     {
       text: '',
       options: ['', '', '', ''],
-      correctAnswer: 0
+      correctAnswer: 0,
+      timerMode: 'inherit',
+      timerCustom: 20
     }
   ];
   renderQuestionsBuilder();
@@ -389,6 +420,9 @@ function renderQuestionsBuilder() {
     const card = document.createElement('div');
     card.className = 'question-builder-card';
     card.dataset.index = qIdx;
+
+    const timerMode = q.timerMode || 'inherit';
+    const timerCustom = q.timerCustom !== undefined ? q.timerCustom : 20;
 
     let optionsHtml = '';
     const letters = ['A', 'B', 'C', 'D', 'E', 'F'];
@@ -409,7 +443,28 @@ function renderQuestionsBuilder() {
 
     card.innerHTML = `
       <div class="qb-header">
-        <span class="qb-number">Soal #${qIdx + 1}</span>
+        <div style="display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap;">
+          <span class="qb-number">Soal #${qIdx + 1}</span>
+          <div class="qb-timer-box" title="Atur waktu khusus untuk soal ini">
+            <span style="font-size: 0.85rem;">⏱️</span>
+            <label style="font-size: 0.75rem; color: var(--text-muted); font-weight: 600;">Timer:</label>
+            <select class="qb-timer-select" data-q="${qIdx}">
+              <option value="inherit" ${timerMode === 'inherit' ? 'selected' : ''}>🌐 Ikuti Standar Kuis</option>
+              <option value="0" ${timerMode === '0' ? 'selected' : ''}>♾️ Tanpa Batas Waktu</option>
+              <option value="10" ${timerMode === '10' ? 'selected' : ''}>10 Detik</option>
+              <option value="15" ${timerMode === '15' ? 'selected' : ''}>15 Detik</option>
+              <option value="20" ${timerMode === '20' ? 'selected' : ''}>20 Detik</option>
+              <option value="30" ${timerMode === '30' ? 'selected' : ''}>30 Detik</option>
+              <option value="45" ${timerMode === '45' ? 'selected' : ''}>45 Detik</option>
+              <option value="60" ${timerMode === '60' ? 'selected' : ''}>60 Detik</option>
+              <option value="custom" ${timerMode === 'custom' ? 'selected' : ''}>✏️ Kustom (Input Sendiri)...</option>
+            </select>
+            <div class="qb-timer-custom-wrap" style="display: ${timerMode === 'custom' ? 'inline-flex' : 'none'};">
+              <input type="number" class="q-timer-custom-input" data-q="${qIdx}" min="3" max="600" value="${timerCustom}" placeholder="Detik">
+              <span style="font-size: 0.75rem; color: var(--text-muted); font-weight: 600;">dtk</span>
+            </div>
+          </div>
+        </div>
         <div>
           ${state.builderQuestions.length > 1 ? `
             <button type="button" class="btn btn-danger btn-sm btn-delete-question" data-q="${qIdx}">
@@ -446,6 +501,32 @@ function bindBuilderInputEvents() {
     input.addEventListener('input', (e) => {
       const qIdx = Number(e.target.dataset.q);
       state.builderQuestions[qIdx].text = e.target.value;
+    });
+  });
+
+  // Question timer mode changes
+  document.querySelectorAll('.qb-timer-select').forEach(select => {
+    select.addEventListener('change', (e) => {
+      const qIdx = Number(e.target.dataset.q);
+      const mode = e.target.value;
+      state.builderQuestions[qIdx].timerMode = mode;
+      const customWrap = e.target.closest('.qb-timer-box').querySelector('.qb-timer-custom-wrap');
+      if (mode === 'custom') {
+        customWrap.style.display = 'inline-flex';
+        const input = customWrap.querySelector('.q-timer-custom-input');
+        if (input) input.focus();
+      } else {
+        customWrap.style.display = 'none';
+      }
+    });
+  });
+
+  // Question custom timer input changes
+  document.querySelectorAll('.q-timer-custom-input').forEach(input => {
+    input.addEventListener('input', (e) => {
+      const qIdx = Number(e.target.dataset.q);
+      const val = parseInt(e.target.value, 10);
+      state.builderQuestions[qIdx].timerCustom = isNaN(val) ? 20 : val;
     });
   });
 
@@ -515,7 +596,9 @@ elements.btnAddQuestion.addEventListener('click', () => {
   state.builderQuestions.push({
     text: '',
     options: ['', '', '', ''],
-    correctAnswer: 0
+    correctAnswer: 0,
+    timerMode: 'inherit',
+    timerCustom: 20
   });
   renderQuestionsBuilder();
   // Scroll to bottom of builder
@@ -533,7 +616,13 @@ elements.quizBuilderForm.addEventListener('submit', async (e) => {
 
   const title = elements.quizTitleInput.value.trim();
   const description = elements.quizDescInput.value.trim();
-  const timePerQuestion = Number(elements.quizTimerSelect.value);
+
+  let globalTimer = 20;
+  if (elements.quizTimerSelect.value === 'custom') {
+    globalTimer = Math.max(0, parseInt(elements.quizTimerCustomInput.value, 10) || 0);
+  } else {
+    globalTimer = Math.max(0, parseInt(elements.quizTimerSelect.value, 10) || 0);
+  }
 
   if (!title) {
     showToast('Judul kuis tidak boleh kosong!', 'error');
@@ -555,11 +644,29 @@ elements.quizBuilderForm.addEventListener('submit', async (e) => {
     }
   }
 
+  const processedQuestions = state.builderQuestions.map(q => {
+    let finalTimer = globalTimer;
+    if (q.timerMode === 'custom') {
+      finalTimer = Math.max(1, parseInt(q.timerCustom, 10) || 20);
+    } else if (q.timerMode === '0') {
+      finalTimer = 0;
+    } else if (q.timerMode && q.timerMode !== 'inherit') {
+      finalTimer = Math.max(0, parseInt(q.timerMode, 10) || 0);
+    } // 'inherit' uses globalTimer
+
+    return {
+      text: q.text,
+      options: q.options,
+      correctAnswer: q.correctAnswer,
+      timer: finalTimer
+    };
+  });
+
   const payload = {
     title,
     description,
-    timePerQuestion,
-    questions: state.builderQuestions,
+    timePerQuestion: globalTimer,
+    questions: processedQuestions,
     creatorId: state.user.userId,
     creatorName: state.user.name
   };
@@ -583,6 +690,9 @@ elements.quizBuilderForm.addEventListener('submit', async (e) => {
     // Reset Form
     elements.quizTitleInput.value = '';
     elements.quizDescInput.value = '';
+    elements.quizTimerSelect.value = '20';
+    if (elements.quizTimerCustomWrap) elements.quizTimerCustomWrap.style.display = 'none';
+    if (elements.quizTimerCustomInput) elements.quizTimerCustomInput.value = '20';
     initQuizBuilderDefault();
 
     // Show Share Modal
@@ -967,9 +1077,50 @@ function addOrUpdateCreatorLeaderboard(result) {
   renderCreatorLeaderboard(state.currentQuiz.results);
 }
 
+function formatQuizTimerInfo(quiz) {
+  if (!quiz.questions || quiz.questions.length === 0) {
+    const d = Number(quiz.timePerQuestion) || 0;
+    return d > 0 ? `${d} detik/soal` : 'Tanpa batas waktu';
+  }
+  const timers = quiz.questions.map(q => (q.timer !== undefined && q.timer !== null) ? Number(q.timer) : (Number(quiz.timePerQuestion) || 0));
+  const allZero = timers.every(t => t === 0);
+  if (allZero) return 'Tanpa batas waktu';
+  const allSame = timers.every(t => t === timers[0]);
+  if (allSame) return `${timers[0]} detik/soal`;
+  return 'Bervariasi per soal';
+}
+
+// 1b. SETUP ALREADY-PLAYED VIEW
+function setupAlreadyPlayedView(quiz, record) {
+  elements.creatorBlockScreen.style.display = 'none';
+  elements.alreadyPlayedScreen.style.display = 'block';
+  elements.playerIntroScreen.style.display = 'none';
+  elements.playerGameScreen.style.display = 'none';
+  elements.playerResultScreen.style.display = 'none';
+
+  elements.alreadyPlayedQuizTitle.textContent = quiz.title;
+  if (record) {
+    elements.alreadyPlayedScore.textContent = `${record.score}/${record.total}`;
+    elements.alreadyPlayedPercent.textContent = `${record.percentage}%`;
+    elements.alreadyPlayedTime.textContent = record.timeSpent ? `${record.timeSpent}s` : '-';
+  } else {
+    elements.alreadyPlayedScore.textContent = '-';
+    elements.alreadyPlayedPercent.textContent = '-';
+    elements.alreadyPlayedTime.textContent = '-';
+  }
+}
+
 // 2. SETUP PLAYER INTRO VIEW
 function setupPlayerIntroView(quiz) {
+  // Block if already played
+  const record = getPlayRecord(quiz.id);
+  if (record) {
+    setupAlreadyPlayedView(quiz, record);
+    return;
+  }
+
   elements.creatorBlockScreen.style.display = 'none';
+  elements.alreadyPlayedScreen.style.display = 'none';
   elements.playerIntroScreen.style.display = 'block';
   elements.playerGameScreen.style.display = 'none';
   elements.playerResultScreen.style.display = 'none';
@@ -978,7 +1129,7 @@ function setupPlayerIntroView(quiz) {
   elements.playQuizDesc.textContent = quiz.description || 'Siapkan dirimu dan jawab seluruh pertanyaan dengan tepat!';
   elements.playQuizCreator.textContent = quiz.creatorName || 'Anonim';
   elements.playQuizTotalQ.textContent = `${quiz.questions.length} Soal`;
-  elements.playQuizTimerInfo.textContent = quiz.timePerQuestion > 0 ? `${quiz.timePerQuestion} detik/soal` : 'Tanpa batas waktu';
+  elements.playQuizTimerInfo.textContent = formatQuizTimerInfo(quiz);
 
   elements.playerScreenNameInput.value = state.user.name;
   elements.playerScreenAvatar.textContent = state.user.avatar;
@@ -1054,7 +1205,10 @@ function loadQuestion(index) {
   });
 
   // Setup Timer if enabled
-  const timeLimit = state.currentQuiz.timePerQuestion;
+  const timeLimit = (currentQ && currentQ.timer !== undefined && currentQ.timer !== null)
+    ? Number(currentQ.timer)
+    : (Number(state.currentQuiz.timePerQuestion) || 0);
+
   if (timeLimit > 0) {
     elements.gameTimerPill.style.display = 'inline-flex';
     elements.gameTimerPill.classList.remove('urgent');
@@ -1149,6 +1303,15 @@ async function finishAndSubmitQuiz() {
 
     // Broadcast activity status back to lobby
     socket.emit('user:status', `Selesai Kuis: ${state.currentQuiz.title}`);
+
+    // ── Record that this user has played this quiz ──
+    savePlayRecord(state.currentQuiz.id, {
+      score: data.score,
+      total: data.total,
+      percentage: data.percentage,
+      timeSpent: Math.round((Date.now() - state.quizStartTime) / 1000),
+      playedAt: new Date().toISOString()
+    });
 
     // Show result view
     elements.playerGameScreen.style.display = 'none';
@@ -1365,6 +1528,32 @@ function bindEvents() {
   elements.btnSeeAllMyQuizzes.addEventListener('click', () => switchTab('my-quizzes'));
   elements.emptyStateCreateBtn.addEventListener('click', () => switchTab('create'));
   elements.btnCreateQuizShortcut.addEventListener('click', () => switchTab('create'));
+
+  // Already-played screen buttons
+  if (elements.btnAlreadyPlayedCreate) {
+    elements.btnAlreadyPlayedCreate.addEventListener('click', () => {
+      history.pushState(null, '', '/');
+      switchTab('create');
+    });
+  }
+  if (elements.btnAlreadyPlayedHome) {
+    elements.btnAlreadyPlayedHome.addEventListener('click', () => {
+      history.pushState(null, '', '/');
+      switchTab('home');
+    });
+  }
+
+  // Global Quiz Timer dropdown change (show/hide custom input)
+  if (elements.quizTimerSelect) {
+    elements.quizTimerSelect.addEventListener('change', () => {
+      if (elements.quizTimerSelect.value === 'custom') {
+        if (elements.quizTimerCustomWrap) elements.quizTimerCustomWrap.style.display = 'inline-flex';
+        if (elements.quizTimerCustomInput) elements.quizTimerCustomInput.focus();
+      } else {
+        if (elements.quizTimerCustomWrap) elements.quizTimerCustomWrap.style.display = 'none';
+      }
+    });
+  }
 
   // Close modals on overlay background click
   window.addEventListener('click', (e) => {

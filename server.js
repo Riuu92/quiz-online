@@ -92,18 +92,32 @@ app.post('/api/quizzes', (req, res) => {
     }
   }
 
+  const defaultTimer = (timePerQuestion !== undefined && timePerQuestion !== null && !isNaN(Number(timePerQuestion)))
+    ? Math.max(0, parseInt(timePerQuestion, 10))
+    : 20;
+
   const quizId = generateId('quiz');
   const newQuiz = {
     id: quizId,
     title: title.trim(),
     description: (description || '').trim(),
-    timePerQuestion: Number(timePerQuestion) || 20,
-    questions: questions.map((q, idx) => ({
-      id: idx + 1,
-      text: q.text.trim(),
-      options: q.options.map(opt => String(opt).trim()),
-      correctAnswer: Number(q.correctAnswer)
-    })),
+    timePerQuestion: defaultTimer,
+    questions: questions.map((q, idx) => {
+      let qTimer = defaultTimer;
+      if (q.timer !== undefined && q.timer !== null && q.timer !== '' && q.timer !== 'inherit') {
+        const parsed = Number(q.timer);
+        if (!isNaN(parsed)) {
+          qTimer = Math.max(0, parseInt(parsed, 10));
+        }
+      }
+      return {
+        id: idx + 1,
+        text: q.text.trim(),
+        options: q.options.map(opt => String(opt).trim()),
+        correctAnswer: Number(q.correctAnswer),
+        timer: qTimer
+      };
+    }),
     creatorId,
     creatorName,
     createdAt: new Date().toISOString(),
@@ -159,14 +173,15 @@ app.get('/api/quizzes/:id', (req, res) => {
   const sanitizedQuestions = quiz.questions.map(q => ({
     id: q.id,
     text: q.text,
-    options: q.options
+    options: q.options,
+    timer: (q.timer !== undefined && q.timer !== null) ? Number(q.timer) : (Number(quiz.timePerQuestion) || 0)
   }));
 
   res.json({
     id: quiz.id,
     title: quiz.title,
     description: quiz.description,
-    timePerQuestion: quiz.timePerQuestion,
+    timePerQuestion: quiz.timePerQuestion !== undefined ? Number(quiz.timePerQuestion) : 20,
     questions: sanitizedQuestions,
     questionCount: sanitizedQuestions.length,
     creatorName: quiz.creatorName,

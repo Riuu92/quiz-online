@@ -563,6 +563,8 @@ main {
   align-items: center;
   justify-content: space-between;
   margin-bottom: 0.9rem;
+  flex-wrap: wrap;
+  gap: 0.6rem;
 }
 
 .qb-number {
@@ -570,8 +572,66 @@ main {
   font-weight: 700;
   color: #a5b4fc;
   background: rgba(99, 102, 241, 0.15);
-  padding: 0.2rem 0.6rem;
+  padding: 0.25rem 0.65rem;
   border-radius: var(--radius-sm);
+  display: inline-flex;
+  align-items: center;
+}
+
+.qb-timer-box {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  background: rgba(255, 255, 255, 0.04);
+  padding: 0.25rem 0.6rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-color);
+  font-size: 0.8rem;
+  transition: var(--transition);
+}
+
+.qb-timer-box:hover {
+  background: rgba(255, 255, 255, 0.07);
+  border-color: rgba(99, 102, 241, 0.4);
+}
+
+.qb-timer-select {
+  background: #0f172a;
+  color: #f1f5f9;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  padding: 0.25rem 0.5rem;
+  font-size: 0.78rem;
+  font-family: inherit;
+  cursor: pointer;
+  outline: none;
+}
+
+.qb-timer-select:focus {
+  border-color: var(--accent-indigo);
+  box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.2);
+}
+
+.qb-timer-custom-wrap {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.q-timer-custom-input {
+  width: 60px;
+  padding: 0.2rem 0.35rem;
+  font-size: 0.8rem;
+  text-align: center;
+  background: #0f172a;
+  color: #f1f5f9;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+}
+
+.q-timer-custom-input:focus {
+  border-color: var(--accent-indigo);
+  outline: none;
 }
 
 .options-builder-list {
@@ -772,6 +832,78 @@ main {
   margin: 0 auto 1.5rem;
   line-height: 1.6;
 }
+
+/* Already Played Blocked Screen */
+.already-played-card {
+  padding: 2.25rem;
+  border-radius: var(--radius-lg);
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.12), rgba(16, 185, 129, 0.07));
+  border: 1px solid rgba(99, 102, 241, 0.35);
+  text-align: center;
+  margin-bottom: 2rem;
+  animation: fadeInUp 0.4s ease;
+}
+
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(16px); }
+  to   { opacity: 1; transform: translateY(0);    }
+}
+
+.already-played-icon {
+  font-size: 3.5rem;
+  margin-bottom: 1rem;
+}
+
+.already-played-title {
+  font-size: 1.5rem;
+  font-weight: 800;
+  color: #a5b4fc;
+  margin-bottom: 0.5rem;
+}
+
+.already-played-desc {
+  color: var(--text-muted);
+  max-width: 560px;
+  margin: 0 auto 1.5rem;
+  line-height: 1.65;
+  font-size: 0.95rem;
+}
+
+.already-played-result-box {
+  display: flex;
+  justify-content: center;
+  gap: 1.25rem;
+  flex-wrap: wrap;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: 1rem 1.5rem;
+  max-width: 420px;
+  margin: 0 auto;
+}
+
+.already-played-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.2rem;
+}
+
+.already-played-stat-label {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.already-played-stat-val {
+  font-size: 1.2rem;
+  font-weight: 800;
+  color: #a5b4fc;
+}
+
+
 
 /* Leaderboard & Results Table */
 .results-table-wrap {
